@@ -34,6 +34,7 @@ from paddle.nn import (
 )
 from paddle.regularizer import L2Decay
 from ppocr.modeling.backbones.rec_hgnet import MeanPool2D
+import math
 
 NET_CONFIG_det = {
     "blocks2":
@@ -405,7 +406,7 @@ class PPLCNetV3(nn.Layer):
         self.scale = scale
         self.lr_mult_list = lr_mult_list
         self.det = det
-
+        self.max_text_length = kwargs.get("max_text_length", None)
         self.net_config = NET_CONFIG_det if self.det else NET_CONFIG_rec
 
         assert isinstance(
@@ -505,6 +506,7 @@ class PPLCNetV3(nn.Layer):
             ]
         )
         self.out_channels = make_divisible(512 * scale)
+        self.up_sample = None
 
         if self.det:
             mv_c = [16, 24, 56, 480]
@@ -529,6 +531,9 @@ class PPLCNetV3(nn.Layer):
                 int(mv_c[2] * scale),
                 int(mv_c[3] * scale),
             ]
+        else:
+            if self.max_text_length is not None and self.max_text_length > 40:
+                self.up_sample = ConvBNLayer(self.out_channels, self.out_channels,3,1)
 
     def forward(self, x):
         out_list = []
@@ -550,9 +555,17 @@ class PPLCNetV3(nn.Layer):
             out_list[2] = self.layer_list[2](out_list[2])
             out_list[3] = self.layer_list[3](out_list[3])
             return out_list
-
-        if self.training:
-            x = F.adaptive_avg_pool2d(x, [1, 40])
+        if self.up_sample is None:
+            if self.training:
+                x = F.adaptive_avg_pool2d(x, [1, 40])
+            else:
+                x = F.avg_pool2d(x, [3, 2])
         else:
-            x = F.avg_pool2d(x, [3, 2])
+            if self.training:
+                x = F.adaptive_avg_pool2d(x, [1, 80])
+            else:
+                x = F.avg_pool2d(x, [3, 1])
+            up_scale = math.ceil(self.max_text_length / 80)
+            x = F.interpolate(x, scale_factor=(1, up_scale), mode="bilinear")
+            x = self.up_sample(x)
         return x

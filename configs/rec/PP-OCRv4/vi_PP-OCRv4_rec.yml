@@ -42,6 +42,7 @@ Architecture:
   Backbone:
     name: PPLCNetV3
     scale: 0.95
+    max_text_length: *max_text_length
   Head:
     name: MultiHead
     head_list:
