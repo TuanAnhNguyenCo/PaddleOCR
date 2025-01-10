@@ -568,4 +568,6 @@ class PPLCNetV3(nn.Layer):
             up_scale = math.ceil(self.max_text_length / 80)
             x = F.interpolate(x, scale_factor=(1, up_scale), mode="bilinear")
             x = self.up_sample(x)
+            if x.shape == out_list[-2].shape:
+                x = x + out_list[-2]
         return x
