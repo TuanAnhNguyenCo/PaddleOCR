@@ -50,13 +50,12 @@ Architecture:
           Neck:
             name: svtr
             dims: 120
-            depth: 3
-            hidden_dims: 120
+            depth: 2
+            hidden_dims: 256
             kernel_size: [1, 3]
             use_guide: False
           Head:
             fc_decay: 0.00001
-            mid_channels: 128
       - NRTRHead:
           nrtr_dim: 384
           max_text_length: *max_text_length
